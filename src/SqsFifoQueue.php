@@ -2,18 +2,20 @@
 
 namespace ShiftOneLabs\LaravelSqsFifoQueue;
 
-use LogicException;
 use Aws\Sqs\SqsClient;
-use ReflectionProperty;
 use BadMethodCallException;
-use InvalidArgumentException;
-use Illuminate\Queue\SqsQueue;
 use Illuminate\Mail\SendQueuedMailable;
+use Illuminate\Notifications\SendQueuedNotifications;
 use Illuminate\Queue\CallQueuedHandler;
+use Illuminate\Queue\InvalidPayloadException;
+use Illuminate\Queue\SqsQueue;
+use InvalidArgumentException;
+use LogicException;
+use ReflectionProperty;
+use ShiftOneLabs\LaravelSqsFifoQueue\Contracts\Queue\Deduplicator;
+use ShiftOneLabs\LaravelSqsFifoQueue\Contracts\Queue\PlainJsonQueue;
 use ShiftOneLabs\LaravelSqsFifoQueue\Support\Arr;
 use ShiftOneLabs\LaravelSqsFifoQueue\Support\Str;
-use Illuminate\Notifications\SendQueuedNotifications;
-use ShiftOneLabs\LaravelSqsFifoQueue\Contracts\Queue\Deduplicator;
 
 class SqsFifoQueue extends SqsQueue
 {
@@ -48,13 +50,13 @@ class SqsFifoQueue extends SqsQueue
     /**
      * Create a new Amazon SQS queue instance.
      *
-     * @param  \Aws\Sqs\SqsClient  $sqs
-     * @param  string  $default
-     * @param  string  $prefix
-     * @param  string  $suffix
-     * @param  string  $group
-     * @param  string  $deduplicator
-     * @param  bool  $allowDelay
+     * @param \Aws\Sqs\SqsClient $sqs
+     * @param string $default
+     * @param string $prefix
+     * @param string $suffix
+     * @param string $group
+     * @param string $deduplicator
+     * @param bool $allowDelay
      *
      * @return void
      */
@@ -71,7 +73,7 @@ class SqsFifoQueue extends SqsQueue
     /**
      * Set the underlying SQS instance.
      *
-     * @param  \Aws\Sqs\SqsClient  $sqs
+     * @param \Aws\Sqs\SqsClient $sqs
      *
      * @return \ShiftOneLabs\LaravelSqsFifoQueue\SqsFifoQueue
      */
@@ -85,9 +87,9 @@ class SqsFifoQueue extends SqsQueue
     /**
      * Push a raw payload onto the queue.
      *
-     * @param  string  $payload
-     * @param  string|null  $queue
-     * @param  array  $options
+     * @param string $payload
+     * @param string|null $queue
+     * @param array $options
      *
      * @return mixed
      */
@@ -113,10 +115,10 @@ class SqsFifoQueue extends SqsQueue
      * can be configured to delay the message. If this queue is setup for
      * delayed messages, push the job to the queue instead of throwing.
      *
-     * @param  \DateTime|int  $delay
-     * @param  string  $job
-     * @param  mixed  $data
-     * @param  string|null  $queue
+     * @param \DateTime|int $delay
+     * @param string $job
+     * @param mixed $data
+     * @param string|null $queue
      *
      * @return mixed
      *
@@ -141,7 +143,7 @@ class SqsFifoQueue extends SqsQueue
      * Additionally, this will provide support for the suffix config for older
      * versions of Laravel, in case anyone wants to use it.
      *
-     * @param  string|null  $queue
+     * @param string|null $queue
      *
      * @return string
      */
@@ -160,15 +162,15 @@ class SqsFifoQueue extends SqsQueue
 
         // Modify the queue name as needed and re-add the ".fifo" suffix.
         return (filter_var($queue, FILTER_VALIDATE_URL) === false
-            ? rtrim($this->prefix, '/').'/'.Str::finish($queue, $this->suffix)
-            : $queue).'.fifo';
+                ? rtrim($this->prefix, '/') . '/' . Str::finish($queue, $this->suffix)
+                : $queue) . '.fifo';
     }
 
     /**
      * Get the deduplication id for the given driver.
      *
-     * @param  string  $payload
-     * @param  string  $queue
+     * @param string $payload
+     * @param string $queue
      *
      * @return string|bool
      *
@@ -182,7 +184,7 @@ class SqsFifoQueue extends SqsQueue
             return false;
         }
 
-        if ($this->container->bound($key = 'queue.sqs-fifo.deduplicator.'.$driver)) {
+        if ($this->container->bound($key = 'queue.sqs-fifo.deduplicator.' . $driver)) {
             $deduplicator = $this->container->make($key);
 
             if ($deduplicator instanceof Deduplicator) {
@@ -198,18 +200,30 @@ class SqsFifoQueue extends SqsQueue
     /**
      * Create a payload string from the given job and data.
      *
-     * @param  mixed  $job
-     * @param  mixed  $data
-     * @param  string|null  $queue
+     * @param \Closure|string|object $job
+     * @param mixed $data
+     * @param string|null $queue
      *
      * @return string
      *
      * @throws \LogicException
      * @throws \InvalidArgumentException
-     * @throws \Illuminate\Queue\InvalidPayloadException
+     * @throws InvalidPayloadException
      */
-    protected function createPayload($job, $data = '', $queue = null)
+    protected function createPayload($job, $data = '', $queue = null): string
     {
+        if ($job instanceof PlainJsonQueue) {
+            $payload = json_encode($job->getPayloadArray(), JSON_UNESCAPED_UNICODE);
+
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                throw new InvalidPayloadException(
+                    'Unable to JSON encode payload. Error code: ' . json_last_error()
+                );
+            }
+
+            return $payload;
+        }
+
         $payload = parent::createPayload($job, $data, $queue);
 
         if (!is_object($job)) {
@@ -245,8 +259,8 @@ class SqsFifoQueue extends SqsQueue
     /**
      * Append meta data to the payload for Laravel <= 5.3.
      *
-     * @param  string  $payload
-     * @param  mixed  $job
+     * @param string $payload
+     * @param mixed $job
      *
      * @return string
      */
@@ -268,9 +282,9 @@ class SqsFifoQueue extends SqsQueue
     /**
      * Create a payload array from the given job and data.
      *
-     * @param  mixed  $job
-     * @param  mixed  $data
-     * @param  string|null  $queue
+     * @param mixed $job
+     * @param mixed $data
+     * @param string|null $queue
      *
      * @return array
      */
@@ -285,7 +299,7 @@ class SqsFifoQueue extends SqsQueue
     /**
      * Get the meta data to add to the payload.
      *
-     * @param  mixed  $job
+     * @param mixed $job
      *
      * @return array
      */
@@ -321,9 +335,9 @@ class SqsFifoQueue extends SqsQueue
     /**
      * Get additional meta from a payload string.
      *
-     * @param  string  $payload
-     * @param  string  $key
-     * @param  mixed  $default
+     * @param string $payload
+     * @param string $key
+     * @param mixed $default
      *
      * @return mixed
      */
@@ -338,8 +352,8 @@ class SqsFifoQueue extends SqsQueue
      * Use reflection to get the value of a restricted (private/protected)
      * property on an object.
      *
-     * @param  object  $object
-     * @param  string  $property
+     * @param object $object
+     * @param string $property
      *
      * @return mixed
      */
