@@ -1,52 +1,64 @@
 {
-    "name": "shiftonelabs/laravel-sqs-fifo-queue",
-    "description": "Adds a Laravel queue driver for Amazon SQS FIFO queues.",
-    "keywords": ["laravel", "lumen", "illuminate", "queue", "sqs", "fifo", "aws"],
-    "homepage": "https://github.com/shiftonelabs/laravel-sqs-fifo-queue",
-    "license": "MIT",
-    "authors": [
-        {
-            "name": "Patrick Carlo-Hickman",
-            "email": "patrick@shiftonelabs.com"
-        }
-    ],
-    "support": {
-        "issues": "https://github.com/shiftonelabs/laravel-sqs-fifo-queue/issues",
-        "source": "https://github.com/shiftonelabs/laravel-sqs-fifo-queue"
+  "name": "gaozhitw/laravel-sqs-fifo-queue",
+  "description": "Adds a Laravel queue driver for Amazon SQS FIFO queues. ",
+  "keywords": [
+    "laravel",
+    "lumen",
+    "illuminate",
+    "queue",
+    "sqs",
+    "fifo",
+    "aws"
+  ],
+  "homepage": "https://github.com/gaozhitw/laravel-sqs-fifo-queue",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Patrick Carlo-Hickman",
+      "email": "patrick@shiftonelabs.com"
     },
-    "require": {
-        "php": ">=8.0",
-        "aws/aws-sdk-php": "~3.0",
-        "illuminate/queue": ">=4.1",
-        "illuminate/support": ">=4.1",
-        "ramsey/uuid": ">=3.0"
-    },
-    "require-dev": {
-        "illuminate/encryption": ">=4.1",
-        "phpunit/phpunit": "~4.0",
-        "mockery/mockery": "~0.9",
-        "squizlabs/php_codesniffer": "3.*",
-        "vlucas/phpdotenv": "~2.2"
-    },
-    "autoload": {
-        "psr-4": {
-            "ShiftOneLabs\\LaravelSqsFifoQueue\\": "src/"
-        }
-    },
-    "autoload-dev": {
-        "psr-4": {
-            "ShiftOneLabs\\LaravelSqsFifoQueue\\Tests\\": "tests/"
-        }
-    },
-    "config": {
-        "sort-packages": true
-    },
-    "minimum-stability": "stable",
-    "extra": {
-        "laravel": {
-            "providers": [
-                "ShiftOneLabs\\LaravelSqsFifoQueue\\LaravelSqsFifoQueueServiceProvider"
-            ]
-        }
+    {
+      "name": "Wayne Kao",
+      "email": "gaozhi.tw@gmail.com"
     }
+  ],
+  "support": {
+    "issues": "https://github.com/shiftonelabs/laravel-sqs-fifo-queue/issues",
+    "source": "https://github.com/shiftonelabs/laravel-sqs-fifo-queue"
+  },
+  "require": {
+    "php": ">=8.0",
+    "aws/aws-sdk-php": "~3.0",
+    "illuminate/queue": ">=4.1",
+    "illuminate/support": ">=4.1",
+    "ramsey/uuid": ">=3.0"
+  },
+  "require-dev": {
+    "illuminate/encryption": ">=4.1",
+    "phpunit/phpunit": "~4.0",
+    "mockery/mockery": "~0.9",
+    "squizlabs/php_codesniffer": "3.*",
+    "vlucas/phpdotenv": "~2.2"
+  },
+  "autoload": {
+    "psr-4": {
+      "ShiftOneLabs\\LaravelSqsFifoQueue\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "ShiftOneLabs\\LaravelSqsFifoQueue\\Tests\\": "tests/"
+    }
+  },
+  "config": {
+    "sort-packages": true
+  },
+  "minimum-stability": "stable",
+  "extra": {
+    "laravel": {
+      "providers": [
+        "ShiftOneLabs\\LaravelSqsFifoQueue\\LaravelSqsFifoQueueServiceProvider"
+      ]
+    }
+  }
 }
