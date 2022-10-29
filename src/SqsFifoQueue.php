@@ -8,6 +8,7 @@ use Illuminate\Mail\SendQueuedMailable;
 use Illuminate\Notifications\SendQueuedNotifications;
 use Illuminate\Queue\CallQueuedHandler;
 use Illuminate\Queue\InvalidPayloadException;
+use Illuminate\Queue\Jobs\SqsJob;
 use Illuminate\Queue\SqsQueue;
 use InvalidArgumentException;
 use LogicException;
@@ -48,6 +49,20 @@ class SqsFifoQueue extends SqsQueue
     protected $allowDelay;
 
     /**
+     * The maximum number of messages to return. Amazon SQS never returns more messages
+     * than this value (however, fewer messages might be returned). Valid values: 1 to
+     * 10. Default: 1.
+     *
+     * @var integer
+     */
+    protected $maxNumberOfMessages;
+
+    /**
+     * @var array
+     */
+    protected $pendingMessages = [];
+
+    /**
      * Create a new Amazon SQS queue instance.
      *
      * @param \Aws\Sqs\SqsClient $sqs
@@ -57,10 +72,11 @@ class SqsFifoQueue extends SqsQueue
      * @param string $group
      * @param string $deduplicator
      * @param bool $allowDelay
+     * @param integer $maxNumberOfMessages
      *
      * @return void
      */
-    public function __construct(SqsClient $sqs, $default, $prefix = '', $suffix = '', $group = '', $deduplicator = '', $allowDelay = false)
+    public function __construct(SqsClient $sqs, $default, $prefix = '', $suffix = '', $group = '', $deduplicator = '', $allowDelay = false, $maxNumberOfMessages = 1)
     {
         parent::__construct($sqs, $default, $prefix);
 
@@ -68,6 +84,7 @@ class SqsFifoQueue extends SqsQueue
         $this->group = $group;
         $this->deduplicator = $deduplicator;
         $this->allowDelay = $allowDelay;
+        $this->maxNumberOfMessages = $maxNumberOfMessages;
     }
 
     /**
@@ -363,5 +380,47 @@ class SqsFifoQueue extends SqsQueue
         $reflectionProperty->setAccessible(true);
 
         return $reflectionProperty->getValue($object);
+    }
+
+    /**
+     * Pop the next job off of the queue.
+     *
+     * @param string|null $queue
+     * @return \Illuminate\Contracts\Queue\Job|null
+     */
+    public function pop($queue = null)
+    {
+        $queue = $this->getQueue($queue);
+        if (count($this->pendingMessages) > 0) {
+            $message = array_shift($this->pendingMessages);
+            return new SqsJob(
+                $this->container,
+                $this->sqs,
+                $message,
+                $this->connectionName,
+                $queue
+            );
+        } else {
+            $response = $this->sqs->receiveMessage([
+                'QueueUrl' => $queue,
+                'MaxNumberOfMessages' => $this->maxNumberOfMessages,
+                'AttributeNames' => ['ApproximateReceiveCount'],
+            ]);
+
+            if (!is_null($response['Messages']) && count($response['Messages']) > 0) {
+                array_push($this->pendingMessages, ...$response['Messages']);
+
+                $message = array_shift($this->pendingMessages);
+                return new SqsJob(
+                    $this->container,
+                    $this->sqs,
+                    $message,
+                    $this->connectionName,
+                    $queue
+                );
+            }
+        }
+
+        return null;
     }
 }

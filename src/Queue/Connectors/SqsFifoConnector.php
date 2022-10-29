@@ -3,18 +3,18 @@
 namespace ShiftOneLabs\LaravelSqsFifoQueue\Queue\Connectors;
 
 use Aws\Sqs\SqsClient;
+use Illuminate\Queue\Connectors\SqsConnector;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
-use Illuminate\Queue\Connectors\SqsConnector;
-use ShiftOneLabs\LaravelSqsFifoQueue\Support\Arr;
 use ShiftOneLabs\LaravelSqsFifoQueue\SqsFifoQueue;
+use ShiftOneLabs\LaravelSqsFifoQueue\Support\Arr;
 
 class SqsFifoConnector extends SqsConnector
 {
     /**
      * Establish a queue connection.
      *
-     * @param  array  $config
+     * @param array $config
      *
      * @return \Illuminate\Contracts\Queue\Queue
      */
@@ -33,6 +33,7 @@ class SqsFifoConnector extends SqsConnector
         $group = Arr::pull($config, 'group', 'default');
         $deduplicator = Arr::pull($config, 'deduplicator', 'unique');
         $allowDelay = (bool)Arr::pull($config, 'allow_delay', false);
+        $maxNumberOfMessages = Arr::pull($config, 'max_number_of_messages', 1);
 
         return new SqsFifoQueue(
             new SqsClient($config),
@@ -41,14 +42,15 @@ class SqsFifoConnector extends SqsConnector
             Arr::get($config, 'suffix', ''),
             $group,
             $deduplicator,
-            $allowDelay
+            $allowDelay,
+            $maxNumberOfMessages
         );
     }
 
     /**
      * Get the default configuration for SQS.
      *
-     * @param  array  $config
+     * @param array $config
      *
      * @return array
      */
